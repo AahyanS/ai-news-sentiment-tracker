@@ -25,6 +25,32 @@ headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 @app.get("/news")
 @app.get("/news")
 def fetch_news(topic: str = "technology"):
+    # --- Fetch Wikipedia Summary ---
+    wiki_summary = ""
+    try:
+        # Clean the topic
+        clean_topic = topic.strip()
+        
+        # Wikipedia prefers Title Case (e.g., 'Artificial Intelligence') 
+        # but for short words, it often wants Upper Case (e.g., 'NASA')
+        search_term = clean_topic.upper() if len(clean_topic) <= 4 else clean_topic.title()
+        search_term = search_term.replace(' ', '_')
+
+        wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{search_term}"
+        
+        # Added a User-Agent header to prevent Wikipedia from blocking the request
+        headers_wiki = {'User-Agent': 'NewsSentimentBot/1.0'}
+        wiki_res = requests.get(wiki_url, headers=headers_wiki, timeout=5)
+        
+        if wiki_res.status_code == 200:
+            wiki_summary = wiki_res.json().get("extract", "")
+        else:
+            print(f"Wiki lookup failed for {search_term} (Status: {wiki_res.status_code})")
+            
+    except Exception as e:
+        print(f"WIKI ERROR: {e}")
+
+    # --- Existing NewsAPI Logic ---
     url = f"https://newsapi.org/v2/everything?q={topic}&language=en&pageSize=10&apiKey={NEWS_API_KEY}"
     response = requests.get(url).json()
     articles = response.get("articles", [])
@@ -35,42 +61,29 @@ def fetch_news(topic: str = "technology"):
         if not art.get('title') or not art.get('url'): 
             continue 
         
+        mood = "Neutral" 
         try:
-            # Ask Hugging Face
-            ai_response = requests.post(AI_API_URL, headers=headers, json={"inputs": art['title']}).json()
+            ai_response = requests.post(AI_API_URL, headers=headers, json={"inputs": art['title']}, timeout=10).json()
             
-            if isinstance(ai_response, dict) and "error" in ai_response:
-                print(f"HUGGING FACE ERROR: {ai_response['error']}")
-                mood = "Neutral"
-            else:
-                # The AI returns a list of dictionaries with all 3 scores. 
-                # Let's organize them so we can see the exact percentages.
+            if isinstance(ai_response, list) and len(ai_response) > 0:
                 scores = {item['label']: item['score'] for item in ai_response[0]}
-                
                 pos = scores.get('positive', 0)
                 neg = scores.get('negative', 0)
                 
-                # --- SENSITIVITY DIAL ---
-                # Lower number = more sensitive. (0.20 means if it's even 20% emotional, we flag it!)
                 SENSITIVITY = 0.20 
-                
                 if pos > SENSITIVITY and pos > neg:
                     mood = "Positive"
                 elif neg > SENSITIVITY and neg > pos:
                     mood = "Negative"
-                else:
-                    mood = "Neutral"
-                    
-                print(f"Success! '{art['title'][:20]}...' -> {mood} (Pos: {pos:.2f}, Neg: {neg:.2f})")
-
-        except Exception as e:
-            print(f"CODE ERROR: {e}")
+        except Exception:
             mood = "Neutral"
 
         processed_articles.append({
             "title": art['title'],
             "url": art['url'],
-            "mood": mood
+            "mood": mood,
+            # We ONLY attach the summary to the very first article
+            "wiki_summary": wiki_summary if len(processed_articles) == 0 else ""
         })
         
     return processed_articles

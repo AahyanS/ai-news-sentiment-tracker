@@ -11,9 +11,11 @@ function App() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`https://ai-news-sentiment-tracker.onrender.com/news?topic=${topic}`)
+    fetch(`http://127.0.0.1:8000/news?topic=${topic}`)
+//    fetch(`https://ai-news-sentiment-tracker.onrender.com/news?topic=${topic}`)
       .then(res => res.json())
       .then(data => {
+        console.log("Articles received:", data);
         if (data.length === 0) {
           setError("No news found for this topic. Try another search!");
         }
@@ -66,15 +68,28 @@ function App() {
           </button>
         </form>
 
+        {/* --- NEW: Wikipedia Summary Card --- */}
+        {!loading && !error && news.length > 0 && news[0].wiki_summary && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-blue-500 mb-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-blue-600 text-2xl">📖</span>
+              <h2 className="text-xl font-bold capitalize">What is {topic}?</h2>
+            </div>
+            <p className="text-gray-600 leading-relaxed italic">
+              "{news[0].wiki_summary}"
+            </p>
+            <p className="text-xs text-gray-400 mt-4 uppercase tracking-widest font-semibold">Source: Wikipedia</p>
+          </div>
+        )}
+
         {loading && <p className="text-center text-xl text-blue-500 font-semibold mt-10 animate-pulse">Running AI Analysis...</p>}
         {error && <p className="text-center text-xl text-red-500 font-semibold mt-10 bg-red-50 p-4 rounded-xl border border-red-200">{error}</p>}
 
         {!loading && !error && news.length > 0 && (
           <>
-            {/* Dashboard Layout: Stats on the left, Chart on the right */}
+            {/* Dashboard Layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               
-              {/* Left Column: Number Widgets */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-green-100 flex flex-col items-center justify-center col-span-2 sm:col-span-1">
                   <span className="text-3xl font-bold text-green-600">{positiveCount}</span>
@@ -90,8 +105,7 @@ function App() {
                 </div>
               </div>
 
-              {/* Right Column: Recharts Pie Chart */}
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-48 md:h-full flex items-center justify-center cursor-pointer">
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 h-64 md:h-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
