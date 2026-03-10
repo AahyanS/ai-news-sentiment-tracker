@@ -1,0 +1,9 @@
+# Ignore the Python environment and cache
+backend/venv/
+backend/__pycache__/
+
+# Ignore Node modules (they are huge!)
+frontend/node_modules/
+
+# CRITICAL: Ignore the secret keys!
+backend/.env
