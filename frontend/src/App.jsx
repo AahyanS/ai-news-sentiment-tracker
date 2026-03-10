@@ -11,8 +11,7 @@ function App() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`http://127.0.0.1:8000/news?topic=${topic}`)
-//    fetch(`https://ai-news-sentiment-tracker.onrender.com/news?topic=${topic}`)
+    fetch(`https://ai-news-sentiment-tracker.onrender.com/news?topic=${topic}`)
       .then(res => res.json())
       .then(data => {
         console.log("Articles received:", data);
